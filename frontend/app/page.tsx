@@ -8,6 +8,7 @@ type NdaDocument = { markdown: string; html: string };
 
 export default function Home() {
   const [nda, setNda] = useState<NdaDocument | null>(null);
+  const [fields, setFields] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,13 +18,15 @@ export default function Home() {
     setError(null);
     try {
       const formData = new FormData(event.currentTarget);
+      const data = Object.fromEntries(formData.entries()) as Record<string, string>;
       const response = await fetch(`${API_URL}/api/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(Object.fromEntries(formData.entries())),
+        body: JSON.stringify(data),
       });
       if (!response.ok) throw new Error(`API responded with ${response.status}`);
       setNda(await response.json());
+      setFields(data);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate document");
@@ -32,15 +35,23 @@ export default function Home() {
     }
   }
 
-  function download() {
-    if (!nda) return;
-    const blob = new Blob([nda.markdown], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "Mutual-NDA.md";
-    link.click();
-    URL.revokeObjectURL(url);
+  async function download() {
+    try {
+      const response = await fetch(`${API_URL}/api/download`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fields),
+      });
+      if (!response.ok) throw new Error(`API responded with ${response.status}`);
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "Mutual-NDA.pdf";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to download PDF");
+    }
   }
 
   if (nda) {
@@ -48,10 +59,17 @@ export default function Home() {
       <main>
         <div className="toolbar">
           <button onClick={download}>Download document</button>
-          <button className="link" onClick={() => setNda(null)}>
+          <button
+            className="link"
+            onClick={() => {
+              setNda(null);
+              setError(null);
+            }}
+          >
             &larr; Start over
           </button>
         </div>
+        {error && <p className="error">{error}</p>}
         <div className="document" dangerouslySetInnerHTML={{ __html: nda.html }} />
       </main>
     );
