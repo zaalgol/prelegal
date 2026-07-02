@@ -1,13 +1,14 @@
-"""Prototype web app for creating a Mutual NDA document (PL-3)."""
+"""API backend for the Mutual NDA creator prototype (PL-3).
 
-from datetime import date
+The frontend is a Next.js app in frontend/ that calls this API.
+"""
 
 import markdown
-from flask import Flask, render_template, request, Response
+from flask import Flask, jsonify, request
 
 from nda import build_document
 
-app = Flask(__name__, template_folder="web")
+app = Flask(__name__)
 
 FIELD_NAMES = [
     "purpose", "effective_date", "term_type", "term_years", "conf_type",
@@ -17,31 +18,23 @@ FIELD_NAMES = [
 ]
 
 
-def _fields_from_form() -> dict:
-    return {name: request.form.get(name, "").strip() for name in FIELD_NAMES}
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    return response
 
 
-@app.get("/")
-def index():
-    return render_template("index.html", today=date.today().isoformat())
-
-
-@app.post("/generate")
+@app.post("/api/generate")
 def generate():
-    fields = _fields_from_form()
+    data = request.get_json(silent=True) or {}
+    fields = {name: str(data.get(name, "")).strip() for name in FIELD_NAMES}
     document_md = build_document(fields)
-    document_html = markdown.markdown(document_md, extensions=["tables"])
-    return render_template("preview.html", document_html=document_html, fields=fields)
-
-
-@app.post("/download")
-def download():
-    document_md = build_document(_fields_from_form())
-    return Response(
-        document_md,
-        mimetype="text/markdown",
-        headers={"Content-Disposition": "attachment; filename=Mutual-NDA.md"},
-    )
+    return jsonify({
+        "markdown": document_md,
+        "html": markdown.markdown(document_md, extensions=["tables"]),
+    })
 
 
 if __name__ == "__main__":
