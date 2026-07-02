@@ -1,0 +1,12 @@
+All documents in this directory are legal agreement templates created and
+published by Common Paper (https://commonpaper.com), retrieved from the
+CommonPaper GitHub organization (https://github.com/CommonPaper).
+
+Everything in this directory is licensed under the Creative Commons
+Attribution 4.0 International (CC BY 4.0) license.
+
+License text: https://creativecommons.org/licenses/by/4.0/
+
+Under this license you are free to copy, redistribute, and adapt these
+materials for any purpose, including commercially, provided that
+appropriate credit is given to Common Paper.
